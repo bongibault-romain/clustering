@@ -1,5 +1,10 @@
 from scipy.io import arff
 import pandas as pd
+import numpy as np
+import os
+
+def datasets(path):
+    return np.array([f for f in os.listdir(path) if f.endswith('.arff')])
 
 def arff_to_dataframe(file_path):
     data, meta = arff.loadarff(file_path)
