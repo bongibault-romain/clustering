@@ -1,6 +1,7 @@
 # TP1 - Clustering
 
-1- a) KMeans:
+## Compréhension edes méthodes et hyperparamètres
+1- KMeans:
 
 | Hyperparamètres étudiés | Raison |
 | ---- | --- |
