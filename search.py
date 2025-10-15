@@ -6,8 +6,27 @@ import os
 import threading
 import queue
 from tqdm import tqdm
+import time
 
-def grid_search_thread(estimator, X, param_subset, scoring, queue, pbar, lock):
+def timed(function):
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        result = function(*args, **kwargs)
+        end = time.time()
+
+        # [Datetime] temps
+        t = time.localtime(end)
+        hours = t.tm_hour
+        minutes = t.tm_min
+        seconds = t.tm_sec
+
+        print(f"[gridsearch INFO @ {hours}:{minutes}:{seconds}] Optimization took {end - start} seconds.")
+
+        return result
+    
+    return wrapper
+
+def grid_search_thread(estimator, X, param_subset, scoring, pbar: tqdm):
     results = []
 
     for params in param_subset:
@@ -29,11 +48,17 @@ def grid_search_thread(estimator, X, param_subset, scoring, queue, pbar, lock):
             pass
             # print(f"Error with parameters {params}: {e}")
         finally:
-            with lock:
-                pbar.update(1)
-    
-    queue.put(results)
+            t = time.localtime(time.time())
+            hours = t.tm_hour
+            minutes = t.tm_min
+            seconds = t.tm_sec
 
+            pbar.set_description(f"[gridsearch INFO @ {hours}:{minutes}:{seconds}]" )
+            pbar.update(1)
+    
+    return results
+
+@timed
 def grid_search(estimator, X, param_grid, scoring = {
     'silhouette': safe_silhouette_score,
     'calinski_harabasz': safe_calinski_harabasz_score,
@@ -53,23 +78,14 @@ def grid_search(estimator, X, param_grid, scoring = {
     
     # Split the parameter of grid into n_jobs parts
     all_params = list(ParameterGrid(param_grid))
-    param_grid_split = np.array_split(all_params, n_jobs)
-    threads = []
-    q = queue.Queue()
-    lock = threading.Lock()
+
+    t = time.localtime(time.time())
+    hours = t.tm_hour
+    minutes = t.tm_min
+    seconds = t.tm_sec
     
     # Initialize shared progress bar
-    with tqdm(total=len(all_params), desc="Grid search progress") as pbar:
-        for param_subset in param_grid_split:
-            thread = threading.Thread(target=grid_search_thread,
-                                      args=(estimator, X, param_subset, scoring, q, pbar, lock))
-            threads.append(thread)
-            thread.start()
-
-        for thread in threads:
-            thread.join()
-
-    while not q.empty():
-        results.extend(q.get())
+    with tqdm(total=len(all_params), desc=f"[gridsearch INFO @ {hours}:{minutes}:{seconds}]") as pbar:
+        results.extend(grid_search_thread(estimator, X, all_params, scoring, pbar))
 
     return pd.DataFrame(results)

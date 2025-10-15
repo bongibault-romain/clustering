@@ -4,7 +4,7 @@ import numpy as np
 import os
 
 def datasets(path):
-    return np.array([f for f in os.listdir(path) if f.endswith('.arff')])
+    return np.array([os.path.splitext(f)[0] for f in os.listdir(path) if f.endswith('.arff')])
 
 def arff_to_dataframe(file_path):
     data, meta = arff.loadarff(file_path)
@@ -19,5 +19,8 @@ def arff_to_dataframe(file_path):
 def arff_to_numpy(file_path):
     df = arff_to_dataframe(file_path)
     X = df.iloc[:, :-1].to_numpy(dtype=float)
-    y = df.iloc[:, -1].to_numpy(dtype=float)
+    y_raw = df.iloc[:, -1]
+    # Convert each unique str in y to a number
+    y, _ = pd.factorize(y_raw)
+
     return X, y
