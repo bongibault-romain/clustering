@@ -1,11 +1,12 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import os
 
 # plt.ion()
 
-def generate_statistics(X: np.ndarray, ground_truth: np.ndarray, results_df: pd.DataFrame, save_path: str = None):
-    print(results_df.sort_values(by='silhouette', ascending=False).head(10))
+def generate_statistics(X: np.ndarray, ground_truth: np.ndarray, results_df: pd.DataFrame, save_path: str = None, show = False):
+    # print(results_df.sort_values(by='silhouette', ascending=False).head(10))
 
     if results_df.empty:
         print("No valid clustering results to analyze.")
@@ -18,9 +19,9 @@ def generate_statistics(X: np.ndarray, ground_truth: np.ndarray, results_df: pd.
     best_davies = results_df['davies_bouldin'].max()
     best_davies_index = results_df['davies_bouldin'].idxmax()
 
-    print(f"Best silhouette: {best_silhouette} with parameters {results_df.iloc[best_silhouette_index].to_dict()}")
-    print(f"Best calinski_harabasz: {best_calinski} with parameters {results_df.iloc[best_calinski_index].to_dict()}")
-    print(f"Best davies_bouldin: {best_davies} with parameters {results_df.iloc[best_davies_index].to_dict()}")
+    # print(f"Best silhouette: {best_silhouette} with parameters {results_df.iloc[best_silhouette_index].to_dict()}")
+    # print(f"Best calinski_harabasz: {best_calinski} with parameters {results_df.iloc[best_calinski_index].to_dict()}")
+    # print(f"Best davies_bouldin: {best_davies} with parameters {results_df.iloc[best_davies_index].to_dict()}")
 
     # plot clusters
     fig, axes = plt.subplots(1, 5, figsize=(25, 5))  # (lignes, colonnes)
@@ -32,30 +33,26 @@ def generate_statistics(X: np.ndarray, ground_truth: np.ndarray, results_df: pd.
     axes[2].set_title('Best Davies-Bouldin Clusters')
 
     # lexicographical order of scores
-    results_df = results_df.sort_values(by=['silhouette', 'calinski_harabasz', 'davies_bouldin'], ascending=[False, False, True])
+    results_df = results_df.sort_values(by=['calinski_harabasz', 'silhouette', 'davies_bouldin'], ascending=[False, False, True])
 
     axes[3].scatter(X[:, 0], X[:, 1], c=results_df.iloc[0]['clusters'], cmap='viridis', s=10)
     axes[3].set_title('Best Overall (Lexicographically) Clusters')
 
-    print(ground_truth)
-    print(results_df.iloc[0]['clusters'])
-
     axes[4].scatter(X[:, 0], X[:, 1], c=ground_truth, cmap='viridis', s=10)
     axes[4].set_title('Ground Truth Clusters')
-
-    # 10 meilleures configurations
-    print("Top 10 configurations (lexicographically):")
-    print(results_df.head(300))
-
-    best_overall_index = results_df.index[0]
-    # print(f"Best overall (lexicographically): {results_df.iloc[best_overall_index].to_dict()}")
 
     plt.tight_layout()
 
     if save_path:
+        # ensure directories
+        dir_name = os.path.dirname(f"{save_path}_clusters.png")
+        if dir_name and not os.path.exists(dir_name):
+            os.makedirs(dir_name, exist_ok=True)
+
         plt.savefig(f"{save_path}_clusters.png")
-    
-    plt.show()
+
+    if show:
+        plt.show()
 
 
 def plot_comparison_table(results_df: pd.DataFrame, algo_name: str):
