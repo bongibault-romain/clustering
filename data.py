@@ -19,5 +19,5 @@ def arff_to_dataframe(file_path):
 def arff_to_numpy(file_path):
     df = arff_to_dataframe(file_path)
     X = df.iloc[:, :-1].to_numpy(dtype=float)
-    y = df.iloc[:, -1].to_numpy()
+    y = df.iloc[:, -1].to_numpy(dtype=float)
     return X, y

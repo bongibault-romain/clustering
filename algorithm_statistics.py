@@ -2,7 +2,9 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
-def generate_statistics(X: np.ndarray, results_df: pd.DataFrame):
+# plt.ion()
+
+def generate_statistics(X: np.ndarray, ground_truth: np.ndarray, results_df: pd.DataFrame, save_path: str = None):
     print(results_df.sort_values(by='silhouette', ascending=False).head(10))
 
     if results_df.empty:
@@ -21,7 +23,7 @@ def generate_statistics(X: np.ndarray, results_df: pd.DataFrame):
     print(f"Best davies_bouldin: {best_davies} with parameters {results_df.iloc[best_davies_index].to_dict()}")
 
     # plot clusters
-    fig, axes = plt.subplots(1, 3, figsize=(15, 4))  # (lignes, colonnes)
+    fig, axes = plt.subplots(1, 5, figsize=(25, 5))  # (lignes, colonnes)
     axes[0].scatter(X[:, 0], X[:, 1], c=results_df.iloc[best_silhouette_index]['clusters'], cmap='viridis', s=10)
     axes[0].set_title('Best Silhouette Clusters')
     axes[1].scatter(X[:, 0], X[:, 1], c=results_df.iloc[best_calinski_index]['clusters'], cmap='viridis', s=10)
@@ -29,26 +31,34 @@ def generate_statistics(X: np.ndarray, results_df: pd.DataFrame):
     axes[2].scatter(X[:, 0], X[:, 1], c=results_df.iloc[best_davies_index]['clusters'], cmap='viridis', s=10)
     axes[2].set_title('Best Davies-Bouldin Clusters')
 
+    # lexicographical order of scores
+    results_df = results_df.sort_values(by=['silhouette', 'calinski_harabasz', 'davies_bouldin'], ascending=[False, False, True])
+
+    axes[3].scatter(X[:, 0], X[:, 1], c=results_df.iloc[0]['clusters'], cmap='viridis', s=10)
+    axes[3].set_title('Best Overall (Lexicographically) Clusters')
+
+    print(ground_truth)
+    print(results_df.iloc[0]['clusters'])
+
+    axes[4].scatter(X[:, 0], X[:, 1], c=ground_truth, cmap='viridis', s=10)
+    axes[4].set_title('Ground Truth Clusters')
+
+    # 10 meilleures configurations
+    print("Top 10 configurations (lexicographically):")
+    print(results_df.head(300))
+
+    best_overall_index = results_df.index[0]
+    # print(f"Best overall (lexicographically): {results_df.iloc[best_overall_index].to_dict()}")
+
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(f"{save_path}_clusters.png")
+    
     plt.show()
 
 
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-
 def plot_comparison_table(results_df: pd.DataFrame, algo_name: str):
-    """
-    Affiche trois graphiques côte à côte comparant les scores
-    Silhouette, Davies-Bouldin et Calinski-Harabasz pour les 10
-    ensembles de paramètres les plus pertinents.
-
-    Parameters
-    ----------
-    results_df : pd.DataFrame
-        Résultats de grid_search (avec colonnes silhouette, davies_bouldin, calinski_harabasz, + params)
-    algo_name : str
-        Nom de l'algorithme évalué (ex: 'DBSCAN', 'HDBSCAN')
-    """
     if results_df.empty:
         print("Aucun résultat à afficher.")
         return
@@ -78,31 +88,63 @@ def plot_comparison_table(results_df: pd.DataFrame, algo_name: str):
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
     fig.suptitle(f"Comparaison des métriques pour {algo_name}", fontsize=16, fontweight='bold')
 
-    # --- 1️⃣ Silhouette ---
+    # Silhouette
     axes[0].bar(x, top_results['silhouette'], color='teal')
     axes[0].set_title("Silhouette Score", fontsize=12, fontweight='bold')
     axes[0].set_xticks(x)
-    # axes[0].set_xticklabels(top_results['param_label'], rotation=45, ha='right', fontsize=8)
     axes[0].set_ylabel("Score")
     axes[0].grid(True, axis='y', linestyle='--', alpha=0.5)
 
-    # --- 2️⃣ Davies-Bouldin ---
+    # Davies-Bouldin
     axes[1].bar(x, top_results['davies_bouldin'], color='orange')
     axes[1].set_title("Davies-Bouldin Index", fontsize=12, fontweight='bold')
     axes[1].set_xticks(x)
-    # axes[1].set_xticklabels(top_results['param_label'], rotation=45, ha='right', fontsize=8)
     axes[1].set_ylabel("Score (plus bas = mieux)")
     axes[1].grid(True, axis='y', linestyle='--', alpha=0.5)
 
-    # --- 3️⃣ Calinski-Harabasz ---
+    # Calinski-Harabasz
     axes[2].bar(x, top_results['calinski_harabasz'], color='purple')
     axes[2].set_title("Calinski-Harabasz Score", fontsize=12, fontweight='bold')
     axes[2].set_xticks(x)
-    # axes[2].set_xticklabels(top_results['param_label'], rotation=45, ha='right', fontsize=8)
     axes[2].set_ylabel("Score (plus haut = mieux)")
     axes[2].grid(True, axis='y', linestyle='--', alpha=0.5)
 
     plt.tight_layout(rect=[0, 0, 1, 0.95])
     plt.show()
 
-    return fig  # retourne la figure si tu veux la sauvegarder ensuite
+
+def boite_a_moustache(results_df: pd.DataFrame, algo_name: str):
+    if results_df.empty:
+        print("Aucun résultat à afficher.")
+        return
+    
+    metrics = ['silhouette', 'davies_bouldin', 'calinski_harabasz']
+    for m in metrics:
+        if m not in results_df.columns:
+            print(f"Score '{m}' manquant dans les résultats.")
+            return
+
+    # Création de 3 axes côte à côte
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    fig.suptitle(f"Distribution des métriques pour {algo_name}", fontsize=16, fontweight='bold')
+
+    # Silhouette
+    axes[0].boxplot(results_df['silhouette'])
+    axes[0].set_title("Silhouette")
+    axes[0].set_ylabel("Score")
+    axes[0].grid(True, linestyle='--', alpha=0.5)
+
+    # Davies-Bouldin
+    axes[1].boxplot(results_df['davies_bouldin'])
+    axes[1].set_title("Davies-Bouldin")
+    axes[1].set_ylabel("Score")
+    axes[1].grid(True, linestyle='--', alpha=0.5)
+
+    # Calinski-Harabasz
+    axes[2].boxplot(results_df['calinski_harabasz'])
+    axes[2].set_title("Calinski-Harabasz")
+    axes[2].set_ylabel("Score")
+    axes[2].grid(True, linestyle='--', alpha=0.5)
+
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.show()
